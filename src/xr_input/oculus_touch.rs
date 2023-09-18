@@ -216,9 +216,9 @@ impl OculusControllerRef<'_> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Thumbstick {
-    x: f32,
-    y: f32,
-    click: bool,
+    pub x: f32,
+    pub y: f32,
+    pub click: bool,
 }
 
 impl OculusController {

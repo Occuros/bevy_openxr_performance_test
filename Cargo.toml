@@ -16,6 +16,7 @@ mint = "0.5.9"
 wgpu = "0.16.0"
 wgpu-core = { version = "0.16.0", features = ["vulkan"] }
 wgpu-hal = "0.16.0"
+colorgrad = { git="https://github.com/mazznoer/colorgrad-rs"}
 
 [dev-dependencies]
 bevy = { git = "https://github.com/awtterpip/bevy" }
