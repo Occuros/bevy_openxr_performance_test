@@ -10,7 +10,6 @@ use bevy_openxr::xr_input::{Hand, QuatConv, Vec3Conv};
 use bevy_openxr::DefaultXrPlugins;
 
 
-
 fn main() {
     color_eyre::install().unwrap();
 
@@ -30,10 +29,13 @@ fn main() {
 pub struct CubeSpawner {
     pub current_width: i32,
     pub current_height: i32,
+    pub cube_size: f32,
     pub distance: f32,
     pub increment: i32,
     pub spawned_cubes: Vec<Entity>,
     pub timer: Timer,
+    pub mesh: Handle<Mesh>,
+    pub material: Handle<StandardMaterial>,
 }
 
 /// set up a simple 3D scene
@@ -41,7 +43,7 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    asset_server: Res<AssetServer>
+    asset_server: Res<AssetServer>,
 ) {
     // plane
     commands.spawn(PbrBundle {
@@ -50,13 +52,17 @@ fn setup(
         ..default()
     });
 
+    let cube_size = 0.01;
     commands.spawn(CubeSpawner {
         current_width: 10,
         current_height: 10,
-        distance: 0.01,
+        cube_size: cube_size,
+        distance: 0.001,
         increment: 5,
         spawned_cubes: vec![],
-        timer: Timer::new(Duration::from_secs_f32(0.5),TimerMode::Repeating),
+        timer: Timer::new(Duration::from_secs_f32(0.5), TimerMode::Repeating),
+        mesh: meshes.add(Mesh::from(shape::Cube { size: cube_size})),
+        material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
     });
 
     // light
@@ -71,13 +77,11 @@ fn setup(
     // });
 
 
-
     // // camera
     // commands.spawn((Camera3dBundle {
     //     transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
     //     ..default()
     // }, ));
-
 }
 
 pub struct ControllerInput {}
@@ -101,7 +105,7 @@ fn spawn_cubes(
 
         cube_spawner.timer.tick(timer.delta());
 
-        if !cube_spawner.timer.finished() {return Ok(())}
+        if !cube_spawner.timer.finished() { return Ok(()); }
 
         let controller = oculus_controller.get_ref(&instance, &session, &frame_state, &xr_input);
 
@@ -109,7 +113,6 @@ fn spawn_cubes(
             did_change = true;
             cube_spawner.current_width += cube_spawner.increment;
             println!("width more: {}", cube_spawner.current_width)
-
         }
 
         if controller.thumbstick(Hand::Right).x < -0.5 {
@@ -117,7 +120,6 @@ fn spawn_cubes(
             cube_spawner.current_width -= cube_spawner.increment;
             cube_spawner.current_width = cube_spawner.current_width.max(0);
             println!("width less: {}", cube_spawner.current_width)
-
         }
 
         if controller.thumbstick(Hand::Right).y > 0.5 {
@@ -131,23 +133,23 @@ fn spawn_cubes(
             cube_spawner.current_height -= cube_spawner.increment;
             cube_spawner.current_height = cube_spawner.current_height.max(0);
             println!("height less: {}", cube_spawner.current_height)
-
         }
 
-        if !did_change {return Ok(())}
+        if !did_change { return Ok(()); }
 
         println!("we should be spawning stuff now {}", cube_spawner.current_width * cube_spawner.current_height);
         for cube in cube_spawner.spawned_cubes.iter() {
             commands.entity(*cube).despawn();
         }
         cube_spawner.spawned_cubes.clear();
+
         let half_width = (cube_spawner.current_width as f32 * 0.5) as i32;
-        for x  in -half_width..half_width {
+        for x in -half_width..half_width {
             for y in 0..cube_spawner.current_height {
                 let cube_entity = commands.spawn(PbrBundle {
-                    mesh: meshes.add(Mesh::from(shape::Cube { size: 0.1 })),
-                    material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
-                    transform: Transform::from_xyz(x as f32 * (0.10 + cube_spawner.distance), y as f32 * (0.10 + cube_spawner.distance), -6.0),
+                    mesh: cube_spawner.mesh.clone_weak(),
+                    material: cube_spawner.material.clone_weak(),
+                    transform: Transform::from_xyz(x as f32 * (cube_spawner.cube_size + cube_spawner.distance), y as f32 * (cube_spawner.cube_size  + cube_spawner.distance), -6.0),
                     ..default()
                 }).id();
                 cube_spawner.spawned_cubes.push(cube_entity);
@@ -169,14 +171,14 @@ fn hands(
     xr_input: Res<XrInput>,
     instance: Res<XrInstance>,
     session: Res<XrSession>,
-    diagnostics: Res<DiagnosticsStore>
+    diagnostics: Res<DiagnosticsStore>,
 ) {
     let mut fps = 0;
     for diagnostic in diagnostics
         .iter()
         .filter(|diagnostic| diagnostic.is_enabled)
     {
-        if diagnostic.name != "fps" {continue};
+        if diagnostic.name != "fps" { continue; };
         fps = diagnostic.average().unwrap_or(0.0) as i32;
     }
 
